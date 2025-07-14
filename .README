@@ -1,0 +1,15 @@
+# NOTE
+
+Always install all packages in each folder where needed
+
+## INSTALL
+
+For Every folder that has a package.json file run the below comand in the folder
+
+```bash
+npm install
+```
+
+## README
+
+Always read the .README file in all folder
