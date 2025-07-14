@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TODO APP</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="main.js" defer></script>
+</head>
+
+<body>
+    <header>
+        TODO APP
+    </header>
+    <main>
+
+        <form id="todo-form">
+            <label>
+                <small>
+                    TODO
+                </small>
+                <input type="text" name="todo" id="todo" placeholder="Add Todo">
+            </label>
+            <input type="text" name="todo-id" id="todo-id" placeholder="Todo Id" hidden>
+            <button type="submit">Submit</button>
+        </form>
+        <section>
+            <ul id="todo-list">
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <span id="active-count"></span>
+        <div class="category-wrapper">
+            <button type="button" id="cat-all">All</button>
+            <button type="button" id="cat-active">Active</button>
+            <button type="button" id="cat-completed">Completed</button>
+        </div>
+
+        <button type="button" id="clear-completed">Clear Completed</button>
+    </footer>
+</body>
+
+</html>
