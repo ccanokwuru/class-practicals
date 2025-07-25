@@ -6,24 +6,50 @@ const app = express();
 // using the environment varible PORT
 const port = process.env.PORT;
 
+// enabled reading of json and url-encoded form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// const user = {
+//   email: "email@email.com",
+//   password: "password",
+// };
+
+const PASSWORD_REGEX =
+  /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W]).{8,}$/;
+
+const PASSWORD_ERROR =
+  "Password must be 8 characters long and contain at least one lowercase letter, one uppercase letter, one digit, and one special character";
+
+const EMAIL_REGEX = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+@[\W]+\.[a-zA-Z0-9._-]{2,}$/;
+
+const users = [
+  {
+    email: "email@email.com",
+    password: "Password2!",
+  },
+];
+
 // login user with demo data
 app.post("/login", (req, res) => {
-  console.log(req.body);
-  const email = req.body.email;
-  const password = req.body.password;
+  // console.log(req.body);
+  // const email = req.body.email;
+  // const password = req.body.password;
 
-  const user = {
-    email: "email@email.com",
-    password: "password",
-  };
+  const { email, password } = req.body;
 
   const errors = [];
+  const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+
+  if (!EMAIL_REGEX.test(email)) {
+    errors.push({
+      feild: "email",
+      error: "Invalid Email format",
+    });
+  }
 
   if (email !== user.email) {
     errors.push({
@@ -31,10 +57,48 @@ app.post("/login", (req, res) => {
       error: "Email not found",
     });
   }
+
+  if (!PASSWORD_REGEX.test(password)) {
+    errors.push({
+      feild: "password",
+      error: PASSWORD_ERROR,
+    });
+  }
+
   if (password !== user.password) {
     errors.push({
       feild: "password",
       error: "Password does not match",
+    });
+  }
+
+  if (errors.length) {
+    return res.status(403).json({
+      status: "failed",
+      errors,
+    });
+  }
+
+  return res.json({
+    status: "success",
+    message: "User Login successful",
+    user,
+  });
+
+  // return "User";
+});
+
+// register user with demo data
+app.post("/register", (req, res) => {
+  const { email, password } = req.body;
+
+  const errors = [];
+  const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  const validate_password = "";
+  if (email === user.email) {
+    errors.push({
+      feild: "email",
+      error: "Email already taken",
     });
   }
 
