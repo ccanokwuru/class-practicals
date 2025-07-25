@@ -42,7 +42,9 @@ app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
   const errors = [];
-  const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  const user = users.find(
+    (u) => u?.email?.toLowerCase() === email?.toLowerCase()
+  );
 
   if (!EMAIL_REGEX.test(email)) {
     errors.push({
@@ -51,7 +53,7 @@ app.post("/login", (req, res) => {
     });
   }
 
-  if (email !== user.email) {
+  if (email !== user?.email) {
     errors.push({
       feild: "email",
       error: "Email not found",
@@ -65,7 +67,7 @@ app.post("/login", (req, res) => {
     });
   }
 
-  if (password !== user.password) {
+  if (password !== user?.password) {
     errors.push({
       feild: "password",
       error: "Password does not match",
