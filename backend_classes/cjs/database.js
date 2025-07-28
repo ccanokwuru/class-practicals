@@ -13,13 +13,14 @@ const sequelize = new Sequelize(
   process.env.DB_USERNAME,
   process.env.DB_PASSWORD,
   {
-    host: DB_HOST,
+    host: process.env.DB_HOST,
     dialect:
-      DB_DIALECT /* one of 'mysql' | 'postgres' | 'sqlite' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle' */,
+      process.env
+        .DB_DIALECT /* one of 'mysql' | 'postgres' | 'sqlite' | 'mariadb' | 'mssql' | 'db2' | 'snowflake' | 'oracle' */,
   }
 );
 
 // default export of instance
-export default sequelize;
+module.exports = sequelize;
 // named / object export of instance
-export { sequelize };
+// export { sequelize };

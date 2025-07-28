@@ -2,6 +2,7 @@
 // this library helps to read the .env file making the key value peer avaliable to the process.env of node
 require("dotenv").config();
 const express = require("express");
+const sequelize = require("./database");
 const app = express();
 // using the environment varible PORT
 const port = process.env.PORT;
@@ -24,7 +25,8 @@ const PASSWORD_REGEX =
 const PASSWORD_ERROR =
   "Password must be 8 characters long and contain at least one lowercase letter, one uppercase letter, one digit, and one special character";
 
-const EMAIL_REGEX = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+@[\W]+\.[a-zA-Z0-9._-]{2,}$/;
+const EMAIL_REGEX =
+  /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+@([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
 
 const users = [
   {
@@ -35,28 +37,14 @@ const users = [
 
 // login user with demo data
 app.post("/login", (req, res) => {
-  // console.log(req.body);
-  // const email = req.body.email;
-  // const password = req.body.password;
-
   const { email, password } = req.body;
 
   const errors = [];
-  const user = users.find(
-    (u) => u?.email?.toLowerCase() === email?.toLowerCase()
-  );
 
   if (!EMAIL_REGEX.test(email)) {
     errors.push({
       feild: "email",
       error: "Invalid Email format",
-    });
-  }
-
-  if (email !== user?.email) {
-    errors.push({
-      feild: "email",
-      error: "Email not found",
     });
   }
 
@@ -67,10 +55,35 @@ app.post("/login", (req, res) => {
     });
   }
 
+  if (errors.length) {
+    return res.status(400).json({
+      status: "failed",
+      errors,
+    });
+  }
+
+  const user = users.find(
+    (u) => u?.email?.toLowerCase() === email?.toLowerCase()
+  );
+
+  if (!user) {
+    return res.status(404).json({
+      status: "failed",
+      message: " User not found",
+    });
+  }
+
   if (password !== user?.password) {
     errors.push({
       feild: "password",
       error: "Password does not match",
+    });
+  }
+
+  if (email !== user?.email) {
+    errors.push({
+      feild: "email",
+      error: "Email not found",
     });
   }
 
@@ -95,33 +108,57 @@ app.post("/register", (req, res) => {
   const { email, password } = req.body;
 
   const errors = [];
-  const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  const validate_password = "";
-  if (email === user.email) {
+
+  if (!EMAIL_REGEX.test(email)) {
     errors.push({
       feild: "email",
-      error: "Email already taken",
+      error: "Invalid Email format",
+    });
+  }
+
+  if (!PASSWORD_REGEX.test(password)) {
+    errors.push({
+      feild: "password",
+      error: PASSWORD_ERROR,
     });
   }
 
   if (errors.length) {
-    return res.status(403).json({
+    return res.status(400).json({
       status: "failed",
       errors,
     });
   }
 
+  const user = users.find(
+    (u) => u?.email?.toLowerCase() === email?.toLowerCase()
+  );
+
+  if (user) {
+    return res.status(409).json({
+      status: "failed",
+      message: "Email already taken",
+    });
+  }
+  users.push({ email, password });
+
   return res.json({
     status: "success",
-    message: "User Login successful",
-    user,
+    message: "User Registration successful",
+    users,
   });
 
   // return "User";
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Example app listening on port ${port}`);
 
   console.log(`server is live on http://localhost:${port}`);
+  try {
+    await sequelize.authenticate();
+    console.log("Connection has been established successfully.");
+  } catch (error) {
+    console.error("Unable to connect to the database:", error);
+  }
 });
