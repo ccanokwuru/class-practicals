@@ -2,10 +2,16 @@
 // this library helps to read the .env file making the key value peer avaliable to the process.env of node
 require("dotenv").config();
 const express = require("express");
+const bcrypt = require("bcrypt");
 const sequelize = require("./database");
+const jwt = require("jsonwebtoken");
+const User = require("./models/user");
 const app = express();
+
 // using the environment varible PORT
 const port = process.env.PORT;
+const hash_salt = Number(process.env.HASH_SALT);
+const jwt_secret = process.env.JWT_SECRET;
 
 // enabled reading of json and url-encoded form data
 app.use(express.json());
@@ -36,7 +42,7 @@ const users = [
 ];
 
 // login user with demo data
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   const errors = [];
@@ -62,9 +68,11 @@ app.post("/login", (req, res) => {
     });
   }
 
-  const user = users.find(
-    (u) => u?.email?.toLowerCase() === email?.toLowerCase()
-  );
+  const user = await User.findOne({
+    where: {
+      email: email,
+    },
+  });
 
   if (!user) {
     return res.status(404).json({
@@ -73,17 +81,12 @@ app.post("/login", (req, res) => {
     });
   }
 
-  if (password !== user?.password) {
+  const valid_password = await bcrypt.compare(password, user?.password);
+
+  if (!valid_password) {
     errors.push({
       feild: "password",
       error: "Password does not match",
-    });
-  }
-
-  if (email !== user?.email) {
-    errors.push({
-      feild: "email",
-      error: "Email not found",
     });
   }
 
@@ -93,10 +96,17 @@ app.post("/login", (req, res) => {
       errors,
     });
   }
+  const token = jwt.sign(
+    {
+      email,
+    },
+    jwt_secret
+  );
 
   return res.json({
     status: "success",
     message: "User Login successful",
+    token,
     user,
   });
 
@@ -104,8 +114,8 @@ app.post("/login", (req, res) => {
 });
 
 // register user with demo data
-app.post("/register", (req, res) => {
-  const { email, password } = req.body;
+app.post("/register", async (req, res) => {
+  const { email, password, firstName, lastName } = req.body;
 
   const errors = [];
 
@@ -129,25 +139,35 @@ app.post("/register", (req, res) => {
       errors,
     });
   }
+  try {
+    const user = await User.findOne({ where: { email } });
 
-  const user = users.find(
-    (u) => u?.email?.toLowerCase() === email?.toLowerCase()
-  );
+    if (user) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Email already taken",
+      });
+    }
+    // let passwordHash;
+    const hash = await bcrypt.hash(password, hash_salt);
 
-  if (user) {
-    return res.status(409).json({
+    await User.create({
+      email,
+      firstName,
+      lastName,
+      password: hash,
+    });
+    return res.json({
+      status: "success",
+      message: "User Registration successful",
+      users,
+    });
+  } catch (error) {
+    return res.status(500).json({
       status: "failed",
-      message: "Email already taken",
+      message: error.message,
     });
   }
-  users.push({ email, password });
-
-  return res.json({
-    status: "success",
-    message: "User Registration successful",
-    users,
-  });
-
   // return "User";
 });
 
