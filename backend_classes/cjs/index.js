@@ -5,7 +5,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const sequelize = require("./database");
 const jwt = require("jsonwebtoken");
-const User = require("./models/user");
+const { User, Session } = require("./models");
 const app = express();
 
 // using the environment varible PORT
@@ -96,12 +96,18 @@ app.post("/login", async (req, res) => {
       errors,
     });
   }
+  const session = await Session.create({
+    user_id: user.id,
+  });
+
   const token = jwt.sign(
     {
-      email,
+      id: session.id,
     },
-    jwt_secret
+    jwt_secret,
+    { expiresIn: "2m" }
   );
+  user.password = undefined;
 
   return res.json({
     status: "success",
@@ -169,6 +175,37 @@ app.post("/register", async (req, res) => {
     });
   }
   // return "User";
+});
+
+const authMiddleware = async (req, res, next) => {
+  const { authorization } = req.headers;
+  const token = authorization?.toString()?.replace("Bearer ", "");
+  try {
+    console.log({ authorization, token });
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is Required",
+      });
+    }
+    const info = jwt.verify(token, jwt_secret);
+    console.log({ info });
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      status: "failed",
+      message: "Invalid or Expired Token",
+      error,
+    });
+  }
+};
+
+app.all("/logout", authMiddleware, async (req, res) => {
+  console.log("logout successful");
+  return res.json({
+    status: "success",
+    message: "Logout Successful",
+  });
 });
 
 app.listen(port, async () => {
