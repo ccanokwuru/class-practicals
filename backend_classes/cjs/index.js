@@ -105,7 +105,7 @@ app.post("/login", async (req, res) => {
       id: session.id,
     },
     jwt_secret,
-    { expiresIn: "2m" }
+    { expiresIn: "2 weeks" }
   );
   user.password = undefined;
 
@@ -188,8 +188,18 @@ const authMiddleware = async (req, res, next) => {
         message: "Token is Required",
       });
     }
-    const info = jwt.verify(token, jwt_secret);
-    console.log({ info });
+    const { id } = jwt.verify(token, jwt_secret);
+    const session = await Session.findByPk(id, { include: User });
+    console.log({ session });
+    req.session = session;
+    req.user = session.User;
+    if (!session) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Invalid or Expired Token",
+        // error,
+      });
+    }
     next();
   } catch (error) {
     return res.status(401).json({
@@ -201,6 +211,13 @@ const authMiddleware = async (req, res, next) => {
 };
 
 app.all("/logout", authMiddleware, async (req, res) => {
+  const { session, user } = req;
+  // console.log({ session, user });
+  await Session.destroy({
+    where: {
+      id: session.id,
+    },
+  });
   console.log("logout successful");
   return res.json({
     status: "success",
