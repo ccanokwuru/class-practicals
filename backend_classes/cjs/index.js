@@ -5,7 +5,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const sequelize = require("./database");
 const jwt = require("jsonwebtoken");
-const { User, Session } = require("./models");
+const { User, Session, Post } = require("./models");
 const app = express();
 
 // using the environment varible PORT
@@ -192,7 +192,7 @@ const authMiddleware = async (req, res, next) => {
     const session = await Session.findByPk(id, { include: User });
     console.log({ session });
     req.session = session;
-    req.user = session.User;
+    req.user = session.user;
     if (!session) {
       return res.status(403).json({
         status: "failed",
@@ -222,6 +222,82 @@ app.all("/logout", authMiddleware, async (req, res) => {
   return res.json({
     status: "success",
     message: "Logout Successful",
+  });
+});
+
+app.get("/posts", async (req, res) => {
+  const posts = await Post.findAll();
+
+  return res.json({
+    status: "success",
+    posts,
+  });
+});
+
+app.get("/posts/:id", authMiddleware, async (req, res) => {
+  const id = req.params.id;
+  const post = await Post.findByPk(id);
+
+  return res.json({
+    status: "success",
+    post,
+  });
+});
+
+app.post("/posts", authMiddleware, async (req, res) => {
+  const { title, authorId, featuredImage, slug, content } = req.body;
+
+  const post = await Post.create({
+    title,
+    authorId: authorId ? authorId : req.user.id,
+    featuredImage,
+    slug,
+    content,
+  });
+
+  return res.json({
+    status: "success",
+    post,
+  });
+});
+
+app.put("/posts/:id", authMiddleware, async (req, res) => {
+  const { title, authorId, featuredImage, slug, content } = req.body;
+  const id = req.params.id;
+
+  const post = await Post.update(
+    {
+      title,
+      authorId,
+      featuredImage,
+      slug,
+      content,
+    },
+    {
+      where: {
+        id,
+      },
+    }
+  );
+
+  return res.json({
+    status: "success",
+    post,
+  });
+});
+
+app.delete("/posts", authMiddleware, async (req, res) => {
+  const id = req.body.id;
+
+  const post = await Post.destroy({
+    where: {
+      id,
+    },
+  });
+
+  return res.json({
+    status: "success",
+    post,
   });
 });
 

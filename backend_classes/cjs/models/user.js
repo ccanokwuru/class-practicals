@@ -11,10 +11,19 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
       User.hasMany(models.Session, {
         foreignKey: {
-          name: "user_id",
+          name: "userId",
           type: DataTypes.INTEGER,
           allowNull: true,
         },
+        as: "sessions",
+      });
+      User.hasMany(models.Post, {
+        foreignKey: {
+          name: "authorId",
+          type: DataTypes.INTEGER,
+          allowNull: true,
+        },
+        as: "posts",
       });
     }
   }

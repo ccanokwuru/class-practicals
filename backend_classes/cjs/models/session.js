@@ -10,19 +10,20 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // define association here
       Session.belongsTo(models.User, {
-        // foreignKey: "session_id",
+        // foreignKey: "sessionId",
         foreignKey: {
-          name: "user_id",
+          name: "userId",
           type: DataTypes.INTEGER,
           allowNull: true,
         },
+        as: "user",
       });
     }
   }
   Session.init(
     {
       // Model attributes are defined here
-      user_id: {
+      userId: {
         type: DataTypes.INTEGER,
         // allowNull: false,
       },
