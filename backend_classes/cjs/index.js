@@ -16,6 +16,11 @@ const jwt_secret = process.env.JWT_SECRET;
 // enabled reading of json and url-encoded form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+});
+
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
@@ -68,54 +73,61 @@ app.post("/login", async (req, res) => {
     });
   }
 
-  const user = await User.findOne({
-    where: {
-      email: email,
-    },
-  });
+  try {
+    const user = await User.findOne({
+      where: {
+        email: email,
+      },
+    });
 
-  if (!user) {
-    return res.status(404).json({
+    if (!user) {
+      return res.status(404).json({
+        status: "failed",
+        message: " User not found",
+      });
+    }
+
+    const valid_password = await bcrypt.compare(password, user?.password);
+
+    if (!valid_password) {
+      errors.push({
+        feild: "password",
+        error: "Password does not match",
+      });
+    }
+
+    if (errors.length) {
+      return res.status(403).json({
+        status: "failed",
+        errors,
+      });
+    }
+    const session = await Session.create({
+      user_id: user.id,
+    });
+
+    const token = jwt.sign(
+      {
+        id: session.id,
+      },
+      jwt_secret,
+      { expiresIn: "2 weeks" }
+    );
+    user.password = undefined;
+
+    return res.json({
+      status: "success",
+      message: "User Login successful",
+      token,
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({
       status: "failed",
-      message: " User not found",
+      message: error.message,
+      errors: error,
     });
   }
-
-  const valid_password = await bcrypt.compare(password, user?.password);
-
-  if (!valid_password) {
-    errors.push({
-      feild: "password",
-      error: "Password does not match",
-    });
-  }
-
-  if (errors.length) {
-    return res.status(403).json({
-      status: "failed",
-      errors,
-    });
-  }
-  const session = await Session.create({
-    user_id: user.id,
-  });
-
-  const token = jwt.sign(
-    {
-      id: session.id,
-    },
-    jwt_secret,
-    { expiresIn: "2 weeks" }
-  );
-  user.password = undefined;
-
-  return res.json({
-    status: "success",
-    message: "User Login successful",
-    token,
-    user,
-  });
-
   // return "User";
 });
 
@@ -172,6 +184,7 @@ app.post("/register", async (req, res) => {
     return res.status(500).json({
       status: "failed",
       message: error.message,
+      errors: error,
     });
   }
   // return "User";
@@ -201,104 +214,150 @@ const authMiddleware = async (req, res, next) => {
       });
     }
     next();
-  } catch (error) {
+  } catch (errors) {
     return res.status(401).json({
       status: "failed",
       message: "Invalid or Expired Token",
-      error,
+      errors,
     });
   }
 };
 
 app.all("/logout", authMiddleware, async (req, res) => {
-  const { session, user } = req;
-  // console.log({ session, user });
-  await Session.destroy({
-    where: {
-      id: session.id,
-    },
-  });
-  console.log("logout successful");
-  return res.json({
-    status: "success",
-    message: "Logout Successful",
-  });
+  try {
+    const { session, user } = req;
+    // console.log({ session, user });
+    await Session.destroy({
+      where: {
+        id: session.id,
+      },
+    });
+    console.log("logout successful");
+    return res.json({
+      status: "success",
+      message: "Logout Successful",
+    });
+  } catch (errors) {
+    return res.status(500).json({
+      status: "failed",
+      message: "Logout failed",
+      errors,
+    });
+  }
 });
 
 app.get("/posts", async (req, res) => {
-  const posts = await Post.findAll();
+  try {
+    const posts = await Post.findAll();
 
-  return res.json({
-    status: "success",
-    posts,
-  });
+    return res.json({
+      status: "success",
+      posts,
+    });
+  } catch (errors) {
+    return res.status(500).json({
+      status: "failed",
+      message: errors.message,
+      errors,
+    });
+  }
 });
 
 app.get("/posts/:id", authMiddleware, async (req, res) => {
   const id = req.params.id;
-  const post = await Post.findByPk(id);
+  try {
+    const post = await Post.findByPk(id);
 
-  return res.json({
-    status: "success",
-    post,
-  });
+    return res.json({
+      status: "success",
+      post,
+    });
+  } catch (errors) {
+    return res.status(500).json({
+      status: "failed",
+      message: errors.message,
+      errors,
+    });
+  }
 });
 
 app.post("/posts", authMiddleware, async (req, res) => {
   const { title, authorId, featuredImage, slug, content } = req.body;
 
-  const post = await Post.create({
-    title,
-    authorId: authorId ? authorId : req.user.id,
-    featuredImage,
-    slug,
-    content,
-  });
+  try {
+    const post = await Post.create({
+      title,
+      authorId: authorId ? authorId : req.user.id,
+      featuredImage,
+      slug,
+      content,
+    });
 
-  return res.json({
-    status: "success",
-    post,
-  });
+    return res.json({
+      status: "success",
+      post,
+    });
+  } catch (errors) {
+    return res.status(500).json({
+      status: "failed",
+      message: errors.message,
+      errors,
+    });
+  }
 });
 
 app.put("/posts/:id", authMiddleware, async (req, res) => {
   const { title, authorId, featuredImage, slug, content } = req.body;
   const id = req.params.id;
-
-  const post = await Post.update(
-    {
-      title,
-      authorId,
-      featuredImage,
-      slug,
-      content,
-    },
-    {
-      where: {
-        id,
+  try {
+    const post = await Post.update(
+      {
+        title,
+        authorId,
+        featuredImage,
+        slug,
+        content,
       },
-    }
-  );
+      {
+        where: {
+          id,
+        },
+      }
+    );
 
-  return res.json({
-    status: "success",
-    post,
-  });
+    return res.json({
+      status: "success",
+      post,
+    });
+  } catch (errors) {
+    return res.status(500).json({
+      status: "failed",
+      message: errors.message,
+      errors,
+    });
+  }
 });
 
 app.delete("/posts", authMiddleware, async (req, res) => {
   const id = req.body.id;
+  try {
+    const post = await Post.destroy({
+      where: {
+        id,
+      },
+    });
 
-  const post = await Post.destroy({
-    where: {
-      id,
-    },
-  });
-
-  return res.json({
-    status: "success",
-    post,
-  });
+    return res.json({
+      status: "success",
+      post,
+    });
+  } catch (errors) {
+    return res.status(500).json({
+      status: "failed",
+      message: errors.message,
+      errors,
+    });
+  }
 });
 
 app.listen(port, async () => {
